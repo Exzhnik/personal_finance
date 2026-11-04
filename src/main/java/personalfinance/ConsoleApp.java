@@ -2,9 +2,11 @@ package personalfinance;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.Set;
 
 public class ConsoleApp {
     private final Scanner scanner = new Scanner(System.in);

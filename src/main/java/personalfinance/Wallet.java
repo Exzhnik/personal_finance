@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class Wallet {
     private final List<Operation> operations = new ArrayList<>();
@@ -46,6 +47,16 @@ public class Wallet {
         BigDecimal total = BigDecimal.ZERO;
         for (Operation operation : operations) {
             if (operation.type() == type && operation.category().equals(category)) {
+                total = total.add(operation.amount());
+            }
+        }
+        return total;
+    }
+
+    public BigDecimal getTotalByCategories(OperationType type, Set<String> categories) {
+        BigDecimal total = BigDecimal.ZERO;
+        for (Operation operation : operations) {
+            if (operation.type() == type && categories.contains(operation.category())) {
                 total = total.add(operation.amount());
             }
         }
