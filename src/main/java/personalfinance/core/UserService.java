@@ -1,4 +1,9 @@
-package personalfinance;
+package personalfinance.core;
+
+import personalfinance.infra.WalletStorage;
+import personalfinance.model.OperationType;
+import personalfinance.model.User;
+import personalfinance.model.Wallet;
 
 import java.io.IOException;
 import java.math.BigDecimal;

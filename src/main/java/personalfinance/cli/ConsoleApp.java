@@ -1,4 +1,11 @@
-package personalfinance;
+package personalfinance.cli;
+
+import personalfinance.core.UserService;
+import personalfinance.infra.CsvWalletStorage;
+import personalfinance.infra.PropertiesWalletStorage;
+import personalfinance.model.OperationType;
+import personalfinance.model.User;
+import personalfinance.model.Wallet;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -13,7 +20,7 @@ public class ConsoleApp {
     private static final BigDecimal BUDGET_WARNING_THRESHOLD = new BigDecimal("0.8");
 
     private final Scanner scanner = new Scanner(System.in);
-    private final UserService userService = new UserService(new WalletStorage());
+    private final UserService userService = new UserService(new PropertiesWalletStorage());
     private final CsvWalletStorage csvWalletStorage = new CsvWalletStorage();
     private User currentUser;
 

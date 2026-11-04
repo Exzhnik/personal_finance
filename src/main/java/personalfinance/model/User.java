@@ -1,4 +1,4 @@
-package personalfinance;
+package personalfinance.model;
 
 public class User {
     private final String login;
@@ -17,7 +17,7 @@ public class User {
         this.wallet = wallet;
     }
 
-    static String normalizeLogin(String login) {
+    public static String normalizeLogin(String login) {
         if (login == null || login.isBlank()) {
             throw new IllegalArgumentException("Логин не может быть пустым");
         }
@@ -32,11 +32,11 @@ public class User {
         return wallet;
     }
 
-    String getPassword() {
+    public String getPassword() {
         return password;
     }
 
-    boolean passwordMatches(String password) {
+    public boolean passwordMatches(String password) {
         return this.password.equals(password);
     }
 }

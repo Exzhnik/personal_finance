@@ -1,4 +1,4 @@
-package personalfinance;
+package personalfinance.model;
 
 import java.math.BigDecimal;
 

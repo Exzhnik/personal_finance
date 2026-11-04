@@ -1,4 +1,8 @@
-package personalfinance;
+package personalfinance.infra;
+
+import personalfinance.model.Operation;
+import personalfinance.model.OperationType;
+import personalfinance.model.Wallet;
 
 import java.io.BufferedWriter;
 import java.io.IOException;

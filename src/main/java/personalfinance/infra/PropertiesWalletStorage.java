@@ -1,4 +1,9 @@
-package personalfinance;
+package personalfinance.infra;
+
+import personalfinance.model.Operation;
+import personalfinance.model.OperationType;
+import personalfinance.model.User;
+import personalfinance.model.Wallet;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,14 +17,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-public class WalletStorage {
+public class PropertiesWalletStorage implements WalletStorage {
     private final Path directory;
 
-    public WalletStorage() {
+    public PropertiesWalletStorage() {
         this(Path.of("data"));
     }
 
-    public WalletStorage(Path directory) {
+    public PropertiesWalletStorage(Path directory) {
         this.directory = directory;
     }
 
