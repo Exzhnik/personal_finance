@@ -25,6 +25,50 @@ public class Wallet {
         budgets.put(category.trim(), limit);
     }
 
+    public void renameCategory(String currentName, String newName) {
+        if (currentName == null || currentName.isBlank()) {
+            throw new IllegalArgumentException("Текущая категория не может быть пустой");
+        }
+        if (newName == null || newName.isBlank()) {
+            throw new IllegalArgumentException("Новая категория не может быть пустой");
+        }
+
+        String currentCategory = currentName.trim();
+        String renamedCategory = newName.trim();
+        if (currentCategory.equals(renamedCategory)) {
+            throw new IllegalArgumentException("Новое название совпадает с текущим");
+        }
+        if (!categoryExists(currentCategory)) {
+            throw new IllegalArgumentException("Категория не найдена: " + currentCategory);
+        }
+        if (categoryExists(renamedCategory)) {
+            throw new IllegalArgumentException("Категория уже существует: " + renamedCategory);
+        }
+
+        for (int i = 0; i < operations.size(); i++) {
+            Operation operation = operations.get(i);
+            if (operation.category().equals(currentCategory)) {
+                operations.set(i, new Operation(operation.type(), renamedCategory, operation.amount()));
+            }
+        }
+        if (budgets.containsKey(currentCategory)) {
+            BigDecimal limit = budgets.remove(currentCategory);
+            budgets.put(renamedCategory, limit);
+        }
+    }
+
+    private boolean categoryExists(String category) {
+        if (budgets.containsKey(category)) {
+            return true;
+        }
+        for (Operation operation : operations) {
+            if (operation.category().equals(category)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public List<Operation> getOperations() {
         return List.copyOf(operations);
     }

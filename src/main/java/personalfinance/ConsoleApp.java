@@ -33,6 +33,7 @@ public class ConsoleApp {
                         case "income" -> addOperation(OperationType.INCOME);
                         case "expense" -> addOperation(OperationType.EXPENSE);
                         case "budget" -> setBudget();
+                        case "rename-category" -> renameCategory();
                         case "report" -> printReport();
                         case "summary" -> printSummary();
                         case "transfer" -> transfer();
@@ -61,7 +62,7 @@ public class ConsoleApp {
             System.out.println("Команды: help, register, login, exit");
         } else {
             System.out.println("Пользователь: " + currentUser.getLogin());
-            System.out.println("Команды: help, income, expense, budget, report, summary, transfer, logout, exit");
+            System.out.println("Команды: help, income, expense, budget, rename-category, report, summary, transfer, logout, exit");
         }
         System.out.print("> ");
     }
@@ -84,20 +85,22 @@ public class ConsoleApp {
 
     private void printHelp() {
         System.out.println("Команды:");
-        System.out.printf("%-12s %s%n", "help", "Показать справку и примеры");
-        System.out.printf("%-12s %s%n", "register", "Зарегистрировать пользователя");
-        System.out.printf("%-12s %s%n", "login", "Войти по логину и паролю");
-        System.out.printf("%-12s %s%n", "income", "Добавить доход");
-        System.out.printf("%-12s %s%n", "expense", "Добавить расход");
-        System.out.printf("%-12s %s%n", "budget", "Установить или изменить бюджет категории");
-        System.out.printf("%-12s %s%n", "report", "Показать общий отчёт");
-        System.out.printf("%-12s %s%n", "summary", "Посчитать сумму по выбранным категориям");
-        System.out.printf("%-12s %s%n", "transfer", "Перевести средства другому пользователю");
-        System.out.printf("%-12s %s%n", "logout", "Выйти из аккаунта");
-        System.out.printf("%-12s %s%n", "exit", "Сохранить данные и завершить работу");
+        System.out.printf("%-18s %s%n", "help", "Показать справку и примеры");
+        System.out.printf("%-18s %s%n", "register", "Зарегистрировать пользователя");
+        System.out.printf("%-18s %s%n", "login", "Войти по логину и паролю");
+        System.out.printf("%-18s %s%n", "income", "Добавить доход");
+        System.out.printf("%-18s %s%n", "expense", "Добавить расход");
+        System.out.printf("%-18s %s%n", "budget", "Установить или изменить бюджет категории");
+        System.out.printf("%-18s %s%n", "rename-category", "Переименовать категорию в операциях и бюджете");
+        System.out.printf("%-18s %s%n", "report", "Показать общий отчёт");
+        System.out.printf("%-18s %s%n", "summary", "Посчитать сумму по выбранным категориям");
+        System.out.printf("%-18s %s%n", "transfer", "Перевести средства другому пользователю");
+        System.out.printf("%-18s %s%n", "logout", "Выйти из аккаунта");
+        System.out.printf("%-18s %s%n", "exit", "Сохранить данные и завершить работу");
         System.out.println("Примеры:");
         System.out.println("  income → Зарплата → 50000");
         System.out.println("  budget → Еда → 4000");
+        System.out.println("  rename-category → Еда → Продукты");
         System.out.println("  summary → expense → Еда,Такси");
         System.out.println("  transfer → bob → 250");
     }
@@ -197,9 +200,19 @@ public class ConsoleApp {
         requireLoggedIn();
         String category = readLine("Категория расходов: ");
         BigDecimal limit = readAmount();
-        currentUser.getWallet().setBudget(category, limit);
-        System.out.println("Бюджет установлен.");
+        Wallet wallet = currentUser.getWallet();
+        boolean updating = wallet.getBudgets().containsKey(category.trim());
+        wallet.setBudget(category, limit);
+        System.out.println(updating ? "Бюджет обновлён." : "Бюджет установлен.");
         printBudgetWarning(category.trim());
+    }
+
+    private void renameCategory() {
+        requireLoggedIn();
+        String currentName = readLine("Текущая категория: ");
+        String newName = readLine("Новая категория: ");
+        currentUser.getWallet().renameCategory(currentName, newName);
+        System.out.println("Категория переименована.");
     }
 
     private void printReport() {
