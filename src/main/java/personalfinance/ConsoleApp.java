@@ -9,6 +9,8 @@ import java.util.Scanner;
 import java.util.Set;
 
 public class ConsoleApp {
+    private static final BigDecimal BUDGET_WARNING_THRESHOLD = new BigDecimal("0.8");
+
     private final Scanner scanner = new Scanner(System.in);
     private final UserService userService = new UserService(new WalletStorage());
     private User currentUser;
@@ -25,6 +27,7 @@ public class ConsoleApp {
                 String command = scanner.nextLine().trim().toLowerCase(Locale.ROOT);
                 try {
                     switch (command) {
+                        case "help" -> printHelp();
                         case "register" -> register();
                         case "login" -> login();
                         case "income" -> addOperation(OperationType.INCOME);
@@ -55,10 +58,10 @@ public class ConsoleApp {
     private void printMenu() {
         System.out.println();
         if (currentUser == null) {
-            System.out.println("Команды: register, login, exit");
+            System.out.println("Команды: help, register, login, exit");
         } else {
             System.out.println("Пользователь: " + currentUser.getLogin());
-            System.out.println("Команды: income, expense, budget, report, summary, transfer, logout, exit");
+            System.out.println("Команды: help, income, expense, budget, report, summary, transfer, logout, exit");
         }
         System.out.print("> ");
     }
@@ -79,6 +82,26 @@ public class ConsoleApp {
         System.out.println("Вход выполнен: " + currentUser.getLogin());
     }
 
+    private void printHelp() {
+        System.out.println("Команды:");
+        System.out.printf("%-12s %s%n", "help", "Показать справку и примеры");
+        System.out.printf("%-12s %s%n", "register", "Зарегистрировать пользователя");
+        System.out.printf("%-12s %s%n", "login", "Войти по логину и паролю");
+        System.out.printf("%-12s %s%n", "income", "Добавить доход");
+        System.out.printf("%-12s %s%n", "expense", "Добавить расход");
+        System.out.printf("%-12s %s%n", "budget", "Установить или изменить бюджет категории");
+        System.out.printf("%-12s %s%n", "report", "Показать общий отчёт");
+        System.out.printf("%-12s %s%n", "summary", "Посчитать сумму по выбранным категориям");
+        System.out.printf("%-12s %s%n", "transfer", "Перевести средства другому пользователю");
+        System.out.printf("%-12s %s%n", "logout", "Выйти из аккаунта");
+        System.out.printf("%-12s %s%n", "exit", "Сохранить данные и завершить работу");
+        System.out.println("Примеры:");
+        System.out.println("  income → Зарплата → 50000");
+        System.out.println("  budget → Еда → 4000");
+        System.out.println("  summary → expense → Еда,Такси");
+        System.out.println("  transfer → bob → 250");
+    }
+
     private void addOperation(OperationType type) {
         requireLoggedIn();
         String category = readLine("Категория: ");
@@ -87,6 +110,8 @@ public class ConsoleApp {
         System.out.println(type == OperationType.INCOME ? "Доход добавлен." : "Расход добавлен.");
         if (type == OperationType.EXPENSE) {
             printExpenseWarnings(category.trim());
+        } else {
+            printZeroBalanceWarning();
         }
     }
 
@@ -132,19 +157,39 @@ public class ConsoleApp {
     }
 
     private void printExpenseWarnings(String category) {
+        printBudgetWarning(category);
         Wallet wallet = currentUser.getWallet();
-        if (wallet.getBudgets().containsKey(category)) {
-            BigDecimal remaining = wallet.getBudgetRemaining(category);
-            if (remaining.signum() < 0) {
-                System.out.println("Внимание: бюджет категории " + category
-                        + " превышен на " + remaining.abs());
-            }
-        }
-
         BigDecimal expenses = wallet.getTotal(OperationType.EXPENSE);
         BigDecimal income = wallet.getTotal(OperationType.INCOME);
         if (expenses.compareTo(income) > 0) {
             System.out.println("Внимание: расходы превышают доходы на " + expenses.subtract(income));
+        }
+        printZeroBalanceWarning();
+    }
+
+    private void printBudgetWarning(String category) {
+        Wallet wallet = currentUser.getWallet();
+        if (!wallet.getBudgets().containsKey(category)) {
+            return;
+        }
+
+        BigDecimal budget = wallet.getBudgets().get(category);
+        BigDecimal spent = wallet.getTotalByCategory(OperationType.EXPENSE, category);
+        BigDecimal remaining = wallet.getBudgetRemaining(category);
+        if (remaining.signum() < 0) {
+            System.out.println("Внимание: бюджет категории " + category
+                    + " превышен на " + remaining.abs());
+        } else if (remaining.signum() == 0) {
+            System.out.println("Внимание: бюджет категории " + category + " полностью использован");
+        } else if (budget.signum() > 0
+                && spent.compareTo(budget.multiply(BUDGET_WARNING_THRESHOLD)) >= 0) {
+            System.out.println("Внимание: использовано не менее 80% бюджета категории " + category);
+        }
+    }
+
+    private void printZeroBalanceWarning() {
+        if (currentUser.getWallet().getBalance().signum() == 0) {
+            System.out.println("Внимание: текущий баланс равен нулю");
         }
     }
 
@@ -154,13 +199,15 @@ public class ConsoleApp {
         BigDecimal limit = readAmount();
         currentUser.getWallet().setBudget(category, limit);
         System.out.println("Бюджет установлен.");
+        printBudgetWarning(category.trim());
     }
 
     private void printReport() {
         requireLoggedIn();
         Wallet wallet = currentUser.getWallet();
-        System.out.println("Общий доход: " + wallet.getTotal(OperationType.INCOME));
-        System.out.println("Общие расходы: " + wallet.getTotal(OperationType.EXPENSE));
+        System.out.printf("Общий доход: %s%n", wallet.getTotal(OperationType.INCOME));
+        System.out.printf("Общие расходы: %s%n", wallet.getTotal(OperationType.EXPENSE));
+        System.out.printf("Текущий баланс: %s%n", wallet.getBalance());
         printCategoryTotals("Доходы по категориям:", wallet.getTotalsByCategory(OperationType.INCOME));
         printCategoryTotals("Расходы по категориям:", wallet.getTotalsByCategory(OperationType.EXPENSE));
 
@@ -170,12 +217,12 @@ public class ConsoleApp {
             System.out.println("  Нет данных");
             return;
         }
+        System.out.printf("%-24s %12s %12s %12s%n", "Категория", "Лимит", "Потрачено", "Остаток");
         for (Map.Entry<String, BigDecimal> entry : budgets.entrySet()) {
             String category = entry.getKey();
             BigDecimal spent = wallet.getTotalByCategory(OperationType.EXPENSE, category);
-            System.out.println("  " + category + ": лимит " + entry.getValue()
-                    + ", потрачено " + spent
-                    + ", остаток " + wallet.getBudgetRemaining(category));
+            System.out.printf("%-24s %12s %12s %12s%n", category, entry.getValue(), spent,
+                    wallet.getBudgetRemaining(category));
         }
     }
 
@@ -185,8 +232,9 @@ public class ConsoleApp {
             System.out.println("  Нет данных");
             return;
         }
+        System.out.printf("%-24s %12s%n", "Категория", "Сумма");
         for (Map.Entry<String, BigDecimal> entry : totals.entrySet()) {
-            System.out.println("  " + entry.getKey() + ": " + entry.getValue());
+            System.out.printf("%-24s %12s%n", entry.getKey(), entry.getValue());
         }
     }
 

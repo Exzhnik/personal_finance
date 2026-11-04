@@ -43,6 +43,10 @@ public class Wallet {
         return total;
     }
 
+    public BigDecimal getBalance() {
+        return getTotal(OperationType.INCOME).subtract(getTotal(OperationType.EXPENSE));
+    }
+
     public BigDecimal getTotalByCategory(OperationType type, String category) {
         BigDecimal total = BigDecimal.ZERO;
         for (Operation operation : operations) {
