@@ -31,6 +31,7 @@ public class ConsoleApp {
                         case "expense" -> addOperation(OperationType.EXPENSE);
                         case "budget" -> setBudget();
                         case "report" -> printReport();
+                        case "summary" -> printSummary();
                         case "logout" -> logout();
                         case "exit" -> {
                             userService.saveAll();
@@ -56,7 +57,7 @@ public class ConsoleApp {
             System.out.println("Команды: register, login, exit");
         } else {
             System.out.println("Пользователь: " + currentUser.getLogin());
-            System.out.println("Команды: income, expense, budget, report, logout, exit");
+            System.out.println("Команды: income, expense, budget, report, summary, logout, exit");
         }
         System.out.print("> ");
     }
@@ -83,6 +84,58 @@ public class ConsoleApp {
         BigDecimal amount = readAmount();
         currentUser.getWallet().addOperation(type, category, amount);
         System.out.println(type == OperationType.INCOME ? "Доход добавлен." : "Расход добавлен.");
+        if (type == OperationType.EXPENSE) {
+            printExpenseWarnings(category.trim());
+        }
+    }
+
+    private void printSummary() {
+        requireLoggedIn();
+        String typeInput = readLine("Тип операций (income/expense): ").trim().toLowerCase(Locale.ROOT);
+        OperationType type;
+        if (typeInput.equals("income")) {
+            type = OperationType.INCOME;
+        } else if (typeInput.equals("expense")) {
+            type = OperationType.EXPENSE;
+        } else {
+            throw new IllegalArgumentException("Тип операций должен быть income или expense");
+        }
+
+        Set<String> categories = new LinkedHashSet<>();
+        for (String category : readLine("Категории через запятую: ").split(",")) {
+            if (!category.isBlank()) {
+                categories.add(category.trim());
+            }
+        }
+        if (categories.isEmpty()) {
+            throw new IllegalArgumentException("Укажите хотя бы одну категорию");
+        }
+
+        Map<String, BigDecimal> available = currentUser.getWallet().getTotalsByCategory(type);
+        for (String category : categories) {
+            if (!available.containsKey(category)) {
+                System.out.println("Категория не найдена: " + category);
+            }
+        }
+        BigDecimal total = currentUser.getWallet().getTotalByCategories(type, categories);
+        System.out.println("Сумма по выбранным категориям: " + total);
+    }
+
+    private void printExpenseWarnings(String category) {
+        Wallet wallet = currentUser.getWallet();
+        if (wallet.getBudgets().containsKey(category)) {
+            BigDecimal remaining = wallet.getBudgetRemaining(category);
+            if (remaining.signum() < 0) {
+                System.out.println("Внимание: бюджет категории " + category
+                        + " превышен на " + remaining.abs());
+            }
+        }
+
+        BigDecimal expenses = wallet.getTotal(OperationType.EXPENSE);
+        BigDecimal income = wallet.getTotal(OperationType.INCOME);
+        if (expenses.compareTo(income) > 0) {
+            System.out.println("Внимание: расходы превышают доходы на " + expenses.subtract(income));
+        }
     }
 
     private void setBudget() {
