@@ -32,6 +32,7 @@ public class ConsoleApp {
                         case "budget" -> setBudget();
                         case "report" -> printReport();
                         case "summary" -> printSummary();
+                        case "transfer" -> transfer();
                         case "logout" -> logout();
                         case "exit" -> {
                             userService.saveAll();
@@ -57,7 +58,7 @@ public class ConsoleApp {
             System.out.println("Команды: register, login, exit");
         } else {
             System.out.println("Пользователь: " + currentUser.getLogin());
-            System.out.println("Команды: income, expense, budget, report, summary, logout, exit");
+            System.out.println("Команды: income, expense, budget, report, summary, transfer, logout, exit");
         }
         System.out.print("> ");
     }
@@ -87,6 +88,15 @@ public class ConsoleApp {
         if (type == OperationType.EXPENSE) {
             printExpenseWarnings(category.trim());
         }
+    }
+
+    private void transfer() throws IOException {
+        requireLoggedIn();
+        String recipientLogin = readLine("Логин получателя: ").trim();
+        BigDecimal amount = readAmount();
+        userService.transfer(currentUser, recipientLogin, amount);
+        System.out.println("Перевод выполнен.");
+        printExpenseWarnings("Перевод пользователю " + recipientLogin);
     }
 
     private void printSummary() {

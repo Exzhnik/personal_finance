@@ -1,6 +1,7 @@
 package personalfinance;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -23,6 +24,38 @@ public class UserService {
     }
 
     public User login(String login, String password) throws IOException {
+        User user = findUser(login);
+        if (user == null || !user.passwordMatches(password)) {
+            throw new IllegalArgumentException("Неверный логин или пароль");
+        }
+        return user;
+    }
+
+    public void transfer(User sender, String recipientLogin, BigDecimal amount) throws IOException {
+        if (sender == null) {
+            throw new IllegalArgumentException("Отправитель не задан");
+        }
+        if (amount == null || amount.signum() <= 0) {
+            throw new IllegalArgumentException("Сумма перевода должна быть больше нуля");
+        }
+
+        User recipient = findUser(recipientLogin);
+        if (recipient == null) {
+            throw new IllegalArgumentException("Получатель не найден: " + recipientLogin);
+        }
+        if (sender.getLogin().equals(recipient.getLogin())) {
+            throw new IllegalArgumentException("Нельзя перевести средства самому себе");
+        }
+
+        sender.getWallet().addOperation(
+                OperationType.EXPENSE, "Перевод пользователю " + recipient.getLogin(), amount
+        );
+        recipient.getWallet().addOperation(
+                OperationType.INCOME, "Перевод от " + sender.getLogin(), amount
+        );
+    }
+
+    private User findUser(String login) throws IOException {
         String normalizedLogin = User.normalizeLogin(login);
         User user = users.get(normalizedLogin);
         if (user == null) {
@@ -30,9 +63,6 @@ public class UserService {
             if (user != null) {
                 users.put(normalizedLogin, user);
             }
-        }
-        if (user == null || !user.passwordMatches(password)) {
-            throw new IllegalArgumentException("Неверный логин или пароль");
         }
         return user;
     }
