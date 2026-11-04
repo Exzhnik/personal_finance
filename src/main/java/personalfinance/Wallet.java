@@ -69,6 +69,19 @@ public class Wallet {
         return false;
     }
 
+    public void replaceWith(Wallet source) {
+        if (source == null) {
+            throw new IllegalArgumentException("Импортированный кошелёк не задан");
+        }
+        if (source == this) {
+            return;
+        }
+        operations.clear();
+        operations.addAll(source.getOperations());
+        budgets.clear();
+        budgets.putAll(source.getBudgets());
+    }
+
     public List<Operation> getOperations() {
         return List.copyOf(operations);
     }

@@ -2,6 +2,7 @@ package personalfinance;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
@@ -13,13 +14,14 @@ public class ConsoleApp {
 
     private final Scanner scanner = new Scanner(System.in);
     private final UserService userService = new UserService(new WalletStorage());
+    private final CsvWalletStorage csvWalletStorage = new CsvWalletStorage();
     private User currentUser;
 
     public void run() {
         boolean running = true;
-        try {
-            while (running) {
-                printMenu();
+        while (running) {
+            printMenu();
+            try {
                 if (!scanner.hasNextLine()) {
                     userService.saveAll();
                     return;
@@ -36,6 +38,8 @@ public class ConsoleApp {
                         case "rename-category" -> renameCategory();
                         case "report" -> printReport();
                         case "summary" -> printSummary();
+                        case "export" -> exportWallet();
+                        case "import" -> importWallet();
                         case "transfer" -> transfer();
                         case "logout" -> logout();
                         case "exit" -> {
@@ -50,9 +54,9 @@ public class ConsoleApp {
                 } catch (IllegalArgumentException exception) {
                     System.out.println("Ошибка: " + exception.getMessage());
                 }
+            } catch (IOException exception) {
+                System.out.println("Ошибка работы с файлом: " + exception.getMessage());
             }
-        } catch (IOException exception) {
-            System.out.println("Ошибка работы с файлом: " + exception.getMessage());
         }
     }
 
@@ -62,7 +66,7 @@ public class ConsoleApp {
             System.out.println("Команды: help, register, login, exit");
         } else {
             System.out.println("Пользователь: " + currentUser.getLogin());
-            System.out.println("Команды: help, income, expense, budget, rename-category, report, summary, transfer, logout, exit");
+            System.out.println("Команды: help, income, expense, budget, rename-category, report, summary, export, import, transfer, logout, exit");
         }
         System.out.print("> ");
     }
@@ -94,6 +98,8 @@ public class ConsoleApp {
         System.out.printf("%-18s %s%n", "rename-category", "Переименовать категорию в операциях и бюджете");
         System.out.printf("%-18s %s%n", "report", "Показать общий отчёт");
         System.out.printf("%-18s %s%n", "summary", "Посчитать сумму по выбранным категориям");
+        System.out.printf("%-18s %s%n", "export", "Экспортировать кошелёк в CSV-файл");
+        System.out.printf("%-18s %s%n", "import", "Импортировать кошелёк из CSV-файла");
         System.out.printf("%-18s %s%n", "transfer", "Перевести средства другому пользователю");
         System.out.printf("%-18s %s%n", "logout", "Выйти из аккаунта");
         System.out.printf("%-18s %s%n", "exit", "Сохранить данные и завершить работу");
@@ -102,6 +108,8 @@ public class ConsoleApp {
         System.out.println("  budget → Еда → 4000");
         System.out.println("  rename-category → Еда → Продукты");
         System.out.println("  summary → expense → Еда,Такси");
+        System.out.println("  export → exports/wallet.csv");
+        System.out.println("  import → exports/wallet.csv");
         System.out.println("  transfer → bob → 250");
     }
 
@@ -213,6 +221,29 @@ public class ConsoleApp {
         String newName = readLine("Новая категория: ");
         currentUser.getWallet().renameCategory(currentName, newName);
         System.out.println("Категория переименована.");
+    }
+
+    private void exportWallet() throws IOException {
+        requireLoggedIn();
+        Path file = readPath();
+        csvWalletStorage.exportWallet(currentUser.getWallet(), file);
+        System.out.println("Кошелёк экспортирован: " + file);
+    }
+
+    private void importWallet() throws IOException {
+        requireLoggedIn();
+        Path file = readPath();
+        Wallet imported = csvWalletStorage.importWallet(file);
+        currentUser.getWallet().replaceWith(imported);
+        System.out.println("Кошелёк импортирован: " + file);
+    }
+
+    private Path readPath() {
+        String value = readLine("Путь к CSV-файлу: ");
+        if (value.isBlank()) {
+            throw new IllegalArgumentException("Путь к файлу не может быть пустым");
+        }
+        return Path.of(value.trim());
     }
 
     private void printReport() {
