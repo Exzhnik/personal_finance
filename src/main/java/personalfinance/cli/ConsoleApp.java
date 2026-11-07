@@ -10,6 +10,9 @@ import personalfinance.model.Wallet;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Path;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.util.TreeMap;
 import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
@@ -288,25 +291,23 @@ public class ConsoleApp {
     private void printReport() {
         requireLoggedIn();
         Wallet wallet = currentUser.getWallet();
-        System.out.printf("Общий доход: %s%n", wallet.getTotal(OperationType.INCOME));
-        System.out.printf("Общие расходы: %s%n", wallet.getTotal(OperationType.EXPENSE));
-        System.out.printf("Текущий баланс: %s%n", wallet.getBalance());
+        System.out.println("Общий доход: " + formatAmount(wallet.getTotal(OperationType.INCOME), true));
         printCategoryTotals("Доходы по категориям:", wallet.getTotalsByCategory(OperationType.INCOME));
-        printCategoryTotals("Расходы по категориям:", wallet.getTotalsByCategory(OperationType.EXPENSE));
+        System.out.println("Общие расходы: " + formatAmount(wallet.getTotal(OperationType.EXPENSE), true));
 
-        Map<String, BigDecimal> budgets = wallet.getBudgets();
-        System.out.println("Бюджеты:");
+        System.out.println("Бюджет по категориям:");
+        Map<String, BigDecimal> budgets = new TreeMap<>(wallet.getBudgets());
         if (budgets.isEmpty()) {
             System.out.println("  Нет данных");
-            return;
         }
-        System.out.printf("%-24s %12s %12s %12s%n", "Категория", "Лимит", "Потрачено", "Остаток");
         for (Map.Entry<String, BigDecimal> entry : budgets.entrySet()) {
             String category = entry.getKey();
-            BigDecimal spent = wallet.getTotalByCategory(OperationType.EXPENSE, category);
-            System.out.printf("%-24s %12s %12s %12s%n", category, entry.getValue(), spent,
-                    wallet.getBudgetRemaining(category));
+            System.out.println(category + ": " + formatAmount(entry.getValue(), false)
+                    + ", Оставшийся бюджет: " + formatAmount(wallet.getBudgetRemaining(category), false));
         }
+
+        System.out.println("Текущий баланс: " + formatAmount(wallet.getBalance(), true));
+        printCategoryTotals("Расходы по категориям:", wallet.getTotalsByCategory(OperationType.EXPENSE));
     }
 
     private void printCategoryTotals(String title, Map<String, BigDecimal> totals) {
@@ -315,10 +316,16 @@ public class ConsoleApp {
             System.out.println("  Нет данных");
             return;
         }
-        System.out.printf("%-24s %12s%n", "Категория", "Сумма");
         for (Map.Entry<String, BigDecimal> entry : totals.entrySet()) {
-            System.out.printf("%-24s %12s%n", entry.getKey(), entry.getValue());
+            System.out.println(entry.getKey() + ": " + formatAmount(entry.getValue(), true));
         }
+    }
+
+    private String formatAmount(BigDecimal amount, boolean grouping) {
+        DecimalFormat format = new DecimalFormat("#,##0.0", DecimalFormatSymbols.getInstance(Locale.US));
+        format.setGroupingUsed(grouping);
+        format.setMaximumFractionDigits(Math.max(1, amount.scale()));
+        return format.format(amount);
     }
 
     private void logout() {

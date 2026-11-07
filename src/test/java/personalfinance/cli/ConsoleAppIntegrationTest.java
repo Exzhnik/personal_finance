@@ -57,12 +57,12 @@ class ConsoleAppIntegrationTest {
                 """);
 
         assertTrue(firstRun.contains("Перевод выполнен."));
-        assertTrue(secondRun.contains("Общий доход: 60000"));
-        assertTrue(secondRun.contains("Общие расходы: 1050"));
-        assertTrue(secondRun.contains("Текущий баланс: 58950"));
+        assertTrue(secondRun.contains("Общий доход: 60,000.0"));
+        assertTrue(secondRun.contains("Общие расходы: 1,050.0"));
+        assertTrue(secondRun.contains("Текущий баланс: 58,950.0"));
         assertTrue(secondRun.contains("Еда"));
         assertTrue(secondRun.contains("3200"));
-        assertTrue(secondRun.contains("Общий доход: 250"));
+        assertTrue(secondRun.contains("Общий доход: 250.0"));
         assertTrue(secondRun.contains("Перевод от alice"));
     }
 
@@ -90,7 +90,7 @@ class ConsoleAppIntegrationTest {
 
         assertTrue(output.contains("Ошибка: Сумма должна быть числом"));
         assertTrue(output.contains("Ошибка: Сумма операции должна быть больше нуля"));
-        assertTrue(output.contains("Общий доход: 1000"));
+        assertTrue(output.contains("Общий доход: 1,000.0"));
         assertTrue(output.contains("Данные сохранены. Работа завершена."));
     }
 
@@ -107,8 +107,8 @@ class ConsoleAppIntegrationTest {
                     + "\nsecret\nincome\nЗарплата\n1000\n" + incompleteCommands[i]);
             assertTrue(output.contains("Данные сохранены"), output);
             String reloaded = runConsole("login\n" + login + "\nsecret\nreport\nexit\n");
-            assertTrue(reloaded.contains("Общий доход: 1000"), reloaded);
-            assertTrue(reloaded.contains("Общие расходы: 0"), reloaded);
+            assertTrue(reloaded.contains("Общий доход: 1,000.0"), reloaded);
+            assertTrue(reloaded.contains("Общие расходы: 0.0"), reloaded);
         }
     }
 
@@ -137,8 +137,38 @@ class ConsoleAppIntegrationTest {
         String output = runConsole("register\nalice\nsecret\nlogin\nalice\nsecret\n"
                 + "income\nЗарплата\n1000\nimport\ninvalid.csv\nreport\nexit\n");
         assertTrue(output.contains("Ошибка работы с файлом"), output);
-        assertTrue(output.contains("Общий доход: 1000"), output);
-        assertTrue(output.contains("Общие расходы: 0"), output);
+        assertTrue(output.contains("Общий доход: 1,000.0"), output);
+        assertTrue(output.contains("Общие расходы: 0.0"), output);
+    }
+
+    @Test
+    void printsAssignmentReportFormat() throws IOException, InterruptedException {
+        String output = runConsole("register\nalice\nsecret\nlogin\nalice\nsecret\n"
+                + "income\nЗарплата\n20000\nincome\nЗарплата\n40000\nincome\nБонус\n3000\n"
+                + "expense\nЕда\n300\nexpense\nЕда\n500\nexpense\nРазвлечения\n3000\n"
+                + "expense\nКоммунальные услуги\n3000\nexpense\nТакси\n1500\n"
+                + "budget\nЕда\n4000\nbudget\nРазвлечения\n3000\nbudget\nКоммунальные услуги\n2500\n"
+                + "report\nexit\n");
+        assertTrue(output.contains("""
+                Общий доход: 63,000.0
+                Доходы по категориям:
+                Зарплата: 60,000.0
+                Бонус: 3,000.0
+                Общие расходы: 8,300.0
+                Бюджет по категориям:
+                Еда: 4000.0, Оставшийся бюджет: 3200.0
+                Коммунальные услуги: 2500.0, Оставшийся бюджет: -500.0
+                Развлечения: 3000.0, Оставшийся бюджет: 0.0
+                """.replace("\n", System.lineSeparator())), output);
+    }
+
+    @Test
+    void preservesFractionalAmountsInReport() throws IOException, InterruptedException {
+        String output = runConsole("register\nalice\nsecret\nlogin\nalice\nsecret\n"
+                + "income\nЗарплата\n1000.25\nexpense\nЕда\n0.125\nbudget\nЕда\n1000.25\nreport\nexit\n");
+        assertTrue(output.contains("Общий доход: 1,000.25"), output);
+        assertTrue(output.contains("Общие расходы: 0.125"), output);
+        assertTrue(output.contains("Еда: 1000.25, Оставшийся бюджет: 1000.125"), output);
     }
 
     private void assertWalletWarnings(String output) {
