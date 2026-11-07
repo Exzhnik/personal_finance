@@ -70,11 +70,16 @@ public class PropertiesWalletStorage implements WalletStorage {
         Properties properties = new Properties();
         try (InputStream input = Files.newInputStream(file)) {
             properties.load(input);
+        } catch (IllegalArgumentException exception) {
+            throw new IOException("Некорректный формат файла пользователя: " + login, exception);
         }
 
         try {
+            if (!User.normalizeLogin(login).equals(required(properties, "login"))) {
+                throw new IllegalArgumentException("Логин в файле не совпадает с запрошенным");
+            }
             Wallet wallet = new Wallet();
-            int operationCount = Integer.parseInt(required(properties, "operation.count"));
+            int operationCount = readCount(properties, "operation.count");
             for (int i = 0; i < operationCount; i++) {
                 OperationType type = OperationType.valueOf(required(properties, "operation." + i + ".type"));
                 String category = required(properties, "operation." + i + ".category");
@@ -82,7 +87,7 @@ public class PropertiesWalletStorage implements WalletStorage {
                 wallet.addOperation(type, category, amount);
             }
 
-            int budgetCount = Integer.parseInt(required(properties, "budget.count"));
+            int budgetCount = readCount(properties, "budget.count");
             for (int i = 0; i < budgetCount; i++) {
                 String category = required(properties, "budget." + i + ".category");
                 BigDecimal limit = new BigDecimal(required(properties, "budget." + i + ".limit"));
@@ -93,6 +98,14 @@ public class PropertiesWalletStorage implements WalletStorage {
         } catch (RuntimeException exception) {
             throw new IOException("Некорректные данные в файле пользователя: " + login, exception);
         }
+    }
+
+    private int readCount(Properties properties, String key) throws IOException {
+        int count = Integer.parseInt(required(properties, key));
+        if (count < 0) {
+            throw new IOException("Количество записей не может быть отрицательным: " + key);
+        }
+        return count;
     }
 
     private String required(Properties properties, String key) throws IOException {

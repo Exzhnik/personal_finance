@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Scanner;
 import java.util.Set;
 
@@ -30,7 +31,7 @@ public class ConsoleApp {
             printMenu();
             try {
                 if (!scanner.hasNextLine()) {
-                    userService.saveAll();
+                    finishOnEndOfInput();
                     return;
                 }
                 String command = scanner.nextLine().trim().toLowerCase(Locale.ROOT);
@@ -61,20 +62,30 @@ public class ConsoleApp {
                 } catch (IllegalArgumentException exception) {
                     System.out.println("Ошибка: " + exception.getMessage());
                 }
+            } catch (NoSuchElementException exception) {
+                finishOnEndOfInput();
+                return;
             } catch (IOException exception) {
                 System.out.println("Ошибка работы с файлом: " + exception.getMessage());
             }
         }
     }
 
+    private void finishOnEndOfInput() {
+        try {
+            userService.saveAll();
+            System.out.println("Ввод завершён. Данные сохранены. Работа завершена.");
+        } catch (IOException exception) {
+            System.out.println("Не удалось сохранить данные при завершении ввода: " + exception.getMessage());
+        }
+    }
+
     private void printMenu() {
         System.out.println();
-        if (currentUser == null) {
-            System.out.println("Команды: help, register, login, exit");
-        } else {
+        if (currentUser != null) {
             System.out.println("Пользователь: " + currentUser.getLogin());
-            System.out.println("Команды: help, income, expense, budget, rename-category, report, summary, export, import, transfer, logout, exit");
         }
+        printCommands(false);
         System.out.print("> ");
     }
 
@@ -92,24 +103,33 @@ public class ConsoleApp {
         String password = readLine("Пароль: ");
         currentUser = userService.login(login, password);
         System.out.println("Вход выполнен: " + currentUser.getLogin());
+        printWalletWarnings();
+    }
+
+    private void printCommands(boolean all) {
+        System.out.println("Команды:");
+        System.out.printf("  %-16s - %s%n", "help", "Показать справку и примеры");
+        if (all || currentUser == null) {
+            System.out.printf("  %-16s - %s%n", "register", "Зарегистрировать пользователя");
+            System.out.printf("  %-16s - %s%n", "login", "Войти по логину и паролю");
+        }
+        if (all || currentUser != null) {
+            System.out.printf("  %-16s - %s%n", "income", "Добавить доход");
+            System.out.printf("  %-16s - %s%n", "expense", "Добавить расход");
+            System.out.printf("  %-16s - %s%n", "budget", "Установить или изменить бюджет категории");
+            System.out.printf("  %-16s - %s%n", "rename-category", "Переименовать категорию в операциях и бюджете");
+            System.out.printf("  %-16s - %s%n", "report", "Показать общий отчёт");
+            System.out.printf("  %-16s - %s%n", "summary", "Посчитать сумму по выбранным категориям");
+            System.out.printf("  %-16s - %s%n", "export", "Экспортировать кошелёк в CSV-файл");
+            System.out.printf("  %-16s - %s%n", "import", "Импортировать кошелёк из CSV-файла");
+            System.out.printf("  %-16s - %s%n", "transfer", "Перевести средства другому пользователю");
+            System.out.printf("  %-16s - %s%n", "logout", "Выйти из аккаунта");
+        }
+        System.out.printf("  %-16s - %s%n", "exit", "Сохранить данные и завершить работу");
     }
 
     private void printHelp() {
-        System.out.println("Команды:");
-        System.out.printf("%-18s %s%n", "help", "Показать справку и примеры");
-        System.out.printf("%-18s %s%n", "register", "Зарегистрировать пользователя");
-        System.out.printf("%-18s %s%n", "login", "Войти по логину и паролю");
-        System.out.printf("%-18s %s%n", "income", "Добавить доход");
-        System.out.printf("%-18s %s%n", "expense", "Добавить расход");
-        System.out.printf("%-18s %s%n", "budget", "Установить или изменить бюджет категории");
-        System.out.printf("%-18s %s%n", "rename-category", "Переименовать категорию в операциях и бюджете");
-        System.out.printf("%-18s %s%n", "report", "Показать общий отчёт");
-        System.out.printf("%-18s %s%n", "summary", "Посчитать сумму по выбранным категориям");
-        System.out.printf("%-18s %s%n", "export", "Экспортировать кошелёк в CSV-файл");
-        System.out.printf("%-18s %s%n", "import", "Импортировать кошелёк из CSV-файла");
-        System.out.printf("%-18s %s%n", "transfer", "Перевести средства другому пользователю");
-        System.out.printf("%-18s %s%n", "logout", "Выйти из аккаунта");
-        System.out.printf("%-18s %s%n", "exit", "Сохранить данные и завершить работу");
+        printCommands(true);
         System.out.println("Примеры:");
         System.out.println("  income → Зарплата → 50000");
         System.out.println("  budget → Еда → 4000");
@@ -176,6 +196,17 @@ public class ConsoleApp {
 
     private void printExpenseWarnings(String category) {
         printBudgetWarning(category);
+        printBalanceWarnings();
+    }
+
+    private void printWalletWarnings() {
+        for (String category : currentUser.getWallet().getBudgets().keySet()) {
+            printBudgetWarning(category);
+        }
+        printBalanceWarnings();
+    }
+
+    private void printBalanceWarnings() {
         Wallet wallet = currentUser.getWallet();
         BigDecimal expenses = wallet.getTotal(OperationType.EXPENSE);
         BigDecimal income = wallet.getTotal(OperationType.INCOME);
@@ -243,6 +274,7 @@ public class ConsoleApp {
         Wallet imported = csvWalletStorage.importWallet(file);
         currentUser.getWallet().replaceWith(imported);
         System.out.println("Кошелёк импортирован: " + file);
+        printWalletWarnings();
     }
 
     private Path readPath() {
